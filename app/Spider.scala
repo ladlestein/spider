@@ -12,6 +12,8 @@ import akka.dispatch.{ExecutionContext, Future}
 import akka.pattern._
 import akka.actor.Status.Success
 import akka.util.Timeout
+import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
+import java.net.URL
 
 /**
  * Created with IntelliJ IDEA.
@@ -34,23 +36,28 @@ object Spider {
   implicit val timeout = Timeout(5 seconds)
 
 
+  val parserFactory = new SAXFactoryImpl
+
   val master = Akka.system.actorOf(Props[Master], name = "Master")
+
 
   def run() = {
     master ? Start
   }
-
-
   class Master extends Actor {
 
-    val topLevelFetchers = context.actorOf(Props[LetterFetcher].withRouter(RoundRobinRouter(nLetterFetchers)), name = "letterRouter")
+
+    val topLevelFetchers = context.actorOf(Props[PageVisitor].withRouter(RoundRobinRouter(nLetterFetchers)), name = "letterRouter")
 
     protected def receive = {
       case Start => {
         val cs = sender
         val tasks = Future.sequence(
-          for (letter <- 'A' to 'Z')
-            yield topLevelFetchers ? FetchLetter(letter)
+          for (letter <- 'A' to 'B')
+            yield {
+              val url = letterPage format letter
+              topLevelFetchers ? VisitPage(url)
+            }
         )
         tasks onComplete { _ =>
           {
@@ -62,19 +69,41 @@ object Spider {
     }
   }
 
-  class LetterFetcher extends Actor {
+  class PageVisitor extends Actor {
+
+    val parser = parserFactory.newSAXParser
+
     protected def receive = {
-      case FetchLetter(letter) => {
+      case VisitPage(url) => {
         val cs = sender
-        val url = letterPage format letter
         val resP = WS.url(url).get
         resP map {
           res => {
             val body = res.body
-            val file = new File(cacheDir, letter + ".html")
-            new PrintWriter(file) print body
-            println("replying to " + cs)
-              cs ! Success
+            println("have body for " + url)
+
+            try {
+              val loader = xml.XML.withSAXParser(parser)
+              val doc = loader.loadString(body)
+              val seq = doc \\ "a"
+
+              seq filter { elem =>
+                ! ((elem \ "b") isEmpty)
+              } map { elem =>
+                elem \ "@href"
+              } foreach { href =>
+                val nextUrl = new URL(new URL(url), href.text)
+                println(nextUrl)
+              }
+
+              println("# of links in " + url + " is " + seq.length)
+            }
+            catch {
+              // TODO use logger
+              case x => println("Exception: " + x)
+              throw x
+            }
+            cs ! Success
           }
         }
       }
@@ -86,7 +115,7 @@ sealed trait SpiderMessage
 
 case class Start(listener: ActorRef) extends SpiderMessage
 case object Finished extends SpiderMessage
-case class FetchLetter(letter: Char) extends SpiderMessage
+case class VisitPage(url: String) extends SpiderMessage
 case class CachePage(letter: Char, body: String, listener: ActorRef) extends SpiderMessage
 
 

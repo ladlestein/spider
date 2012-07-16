@@ -9,12 +9,20 @@ object  ApplicationBuild extends Build {
 
     val appDependencies = Seq(
       "com.typesafe.akka" % "akka-actor" % "2.0.2",
-      "org.jsoup" % "jsoup" % "1.6.3",
+      "org.ccil.cowan.tagsoup" % "tagsoup" % "1.2.1",
+//      "org.jsoup" % "jsoup" % "1.6.3",
       "org.specs2" %% "specs2" % "1.11" % "test"
     )
 
     val main = PlayProject(appName, appVersion, appDependencies, mainLang = SCALA).settings(
-      // Add your own project settings here      
+
+      autoCompilerPlugins := true,
+
+      libraryDependencies <+= scalaVersion { v =>
+        compilerPlugin("org.scala-lang.plugins" % "continuations" % "2.9.2")
+      },
+
+      scalacOptions += "-P:continuations:enable"
     )
 
 }
