@@ -8,10 +8,11 @@ object  ApplicationBuild extends Build {
     val appVersion      = "1.0-SNAPSHOT"
 
     val appDependencies = Seq(
+      "com.nowanswers" %% "chemistry" % "0.2.0",
       "com.typesafe.akka" % "akka-actor" % "2.0.2",
       "org.ccil.cowan.tagsoup" % "tagsoup" % "1.2.1",
-//      "org.jsoup" % "jsoup" % "1.6.3",
-      "org.specs2" %% "specs2" % "1.11" % "test"
+      "org.scalesxml" %% "scales-xml" % "0.4.3",
+      "org.mockito" % "mockito-all" % "1.9.0" % "test"
     )
 
     val main = PlayProject(appName, appVersion, appDependencies, mainLang = SCALA).settings(
@@ -22,7 +23,11 @@ object  ApplicationBuild extends Build {
         compilerPlugin("org.scala-lang.plugins" % "continuations" % "2.9.2")
       },
 
-      scalacOptions += "-P:continuations:enable"
+      resolvers ++= Seq(
+        Resolver.file("Local ivy Repository", file("/Users/ladlestein/.ivy2/local/"))(Resolver.ivyStylePatterns)
+      )
+
     )
 
 }
+
