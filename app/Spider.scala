@@ -2,29 +2,29 @@ package spider
 
 import akka.routing.RoundRobinRouter
 import akka.util.duration._
-import java.io.{PrintWriter, File}
-import mineral.{RealMineralBuilderComponent, MineralBuilderComponent}
+import java.io.File
+import mineral.MindatMineralPageScraperComponent
 import play.api.libs.ws.WS
-import play.api.{Logger, Play}
 import play.api.Play.current
-import akka.actor.{ActorRef, Props, ActorSystem, Actor}
+import akka.actor.{ActorRef, Props, Actor}
 import play.api.libs.concurrent.Akka
 import akka.dispatch.{ExecutionContext, Future}
-import akka.dispatch.Future.flow
 import akka.pattern._
-import akka.actor.Status.Success
 import akka.util.Timeout
 import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
 import java.net.URL
-import xml.Elem
 import com.nowanswers.chemistry.BasicFormulaParserComponent
+import com.nowanswers.spider.{MongoMineralStoreComponent, RealMineralBuilderComponent}
+import com.mongodb.casbah.Imports._
+import akka.actor.Status.Success
 
 /**
  * Created with IntelliJ IDEA.
  * User: ladlestein
  * Date: 6/11/12
  * Time: 6:34 PM
- * To change this template use File | Settings | File Templates.
+ *
+ * The spidering code is here.
  */
 
 object Spider {
@@ -82,7 +82,7 @@ object Spider {
     protected def receive = {
       case VisitPage(url) => {
         val cs = sender
-        val resP = WS.url(url).get
+        val resP = WS.url(url).get()
 
         resP map {
           res => {
@@ -98,7 +98,7 @@ object Spider {
                 ! ((elem \ "b") isEmpty)
               } map { elem =>
                 elem \ "@href"
-              } slice (0, 5) foreach { href =>
+              } foreach { href =>
                 val mineralPageUrl = new URL(new URL(url), href.text)
                 mineralFetchers ? VisitMineral(mineralPageUrl.toString)
               }
@@ -107,7 +107,7 @@ object Spider {
             }
             catch {
               // TODO use logger
-              case x => println("Exception: " + x)
+              case x: Exception => println("Exception: " + x)
               throw x
             }
             cs ! Success
@@ -117,15 +117,26 @@ object Spider {
     }
   }
 
-  class MineralVisitor extends Actor with RealMineralBuilderComponent with BasicFormulaParserComponent {
+  class MineralVisitor extends Actor
+
+  with RealMineralBuilderComponent
+  with BasicFormulaParserComponent
+  with MindatMineralPageScraperComponent
+  with MongoMineralStoreComponent {
 
     val saxparser = parserFactory.newSAXParser
+
+    val collection = {
+      val connection = MongoConnection()
+      val database = connection("spider")
+      database ("minerals")
+    }
 
 
     protected def receive = {
       case VisitMineral(url) => {
         val cs = sender
-        val resP = WS.url(url).get
+        val resP = WS.url(url).get()
         resP map {
           res => {
             val body = res.body
@@ -136,14 +147,13 @@ object Spider {
               val doc = loader.loadString(body)
               (builder buildMineral doc) foreach { mineral =>
                 println("Found mineral %s with formula %s".format(mineral.name, mineral.formula))
-                mineral
+                store storeMineral mineral
               }
-
             }
 
             catch {
               // TODO use logger
-              case x => println("Exception: " + x)
+              case x: Exception => println("Exception: " + x)
               throw x
             }
             cs ! Success
@@ -153,22 +163,6 @@ object Spider {
       }
     }
 
-//    def findFormula(elem: Elem) = {
-//      (elem \\ "th").find {
-//        node => node match
-//        {
-//          case <th>{ text }</th> if text.toString == "Formula:" => true
-//        }
-//      } flatMap {
-//        formulaNode => formulaNode.
-//      }
-//    }
-//
-//    def findName(doc: Elem) {
-//      val nodes = doc \\ "h1"
-//      val name = nodes.head.text
-//      println("found mineral: " + name)
-//    }
   }
 }
 

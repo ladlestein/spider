@@ -1,4 +1,4 @@
-package spider.mineral
+package com.nowanswers.mineralogy
 
 import com.nowanswers.chemistry.Formula
 
@@ -7,7 +7,8 @@ import com.nowanswers.chemistry.Formula
  * User: ladlestein
  * Date: 9/13/12
  * Time: 3:57 PM
- * To change this template use File | Settings | File Templates.
+ *
+ * Here are the models that define mineralogy.
  */
 case class Mineral(name: String, formula: Formula)
 
