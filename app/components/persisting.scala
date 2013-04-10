@@ -23,10 +23,7 @@ trait MongoMineralStoreComponent extends MineralStoreComponent with BasicFormula
 
   import com.novus.salat._
   import com.novus.salat.global._
-  import com.novus.salat.annotations._
-  import com.novus.salat.dao._
   import com.mongodb.casbah.Imports._
-  import com.mongodb.casbah.MongoConnection
   import com.mongodb.casbah.MongoCollection
 
 
@@ -46,6 +43,7 @@ trait MongoMineralStoreComponent extends MineralStoreComponent with BasicFormula
       val dto = MineralDTO(mineral)
       val mob = grater[MineralDTO].asDBObject(dto)
       collection insert mob
+
     }
 
     def loadMineral (name : String) : Option[Mineral] = {

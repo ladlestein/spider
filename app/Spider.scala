@@ -1,22 +1,21 @@
 package spider
 
 import akka.routing.RoundRobinRouter
-import akka.util.duration._
 import java.io.File
 import mineral.MindatMineralPageScraperComponent
 import play.api.libs.ws.WS
 import play.api.Play.current
-import akka.actor.{ActorRef, Props, Actor}
+import akka.actor.{ActorLogging, ActorRef, Props, Actor}
 import play.api.libs.concurrent.Akka
-import akka.dispatch.{ExecutionContext, Future}
 import akka.pattern._
-import akka.util.Timeout
 import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
 import java.net.URL
 import com.nowanswers.chemistry.BasicFormulaParserComponent
 import com.nowanswers.spider.{MongoMineralStoreComponent, RealMineralBuilderComponent}
 import com.mongodb.casbah.Imports._
 import akka.actor.Status.Success
+import scala.concurrent.{Future, ExecutionContext}
+import spider.implicits._
 
 /**
  * Created with IntelliJ IDEA.
@@ -36,26 +35,21 @@ object Spider {
   val nLetterFetchers = 2
   val nMineralVisitors = 5
 
-  val dispatcher = Akka.system.dispatcher
-  implicit val ec = ExecutionContext.fromExecutor(dispatcher)
-
-  implicit val timeout = Timeout(5 seconds)
-
-
   val parserFactory = new SAXFactoryImpl
 
   val master = Akka.system.actorOf(Props[Master], name = "Master")
 
   val mineralFetchers = Akka.system.actorOf(Props[MineralVisitor].withRouter(RoundRobinRouter(nMineralVisitors)), name = "mineralVisitor")
 
-  def run() = {
+  def run = {
     master ? Start
   }
-  class Master extends Actor {
+
+  class Master extends Actor with ActorLogging {
 
     val topLevelFetchers = context.actorOf(Props[PageVisitor].withRouter(RoundRobinRouter(nLetterFetchers)), name = "letterRouter")
 
-    protected def receive = {
+    def receive = {
       case Start => {
         val cs = sender
         val tasks = Future.sequence(
@@ -67,7 +61,7 @@ object Spider {
         )
         tasks onComplete { _ =>
           {
-            println("all tasks complete")
+            log.info("all letter-pages fetched")
             cs ! Success
           }
         }
@@ -75,11 +69,11 @@ object Spider {
     }
   }
 
-  class PageVisitor extends Actor {
+  class PageVisitor extends Actor with ActorLogging {
 
     val parser = parserFactory.newSAXParser
 
-    protected def receive = {
+    def receive = {
       case VisitPage(url) => {
         val cs = sender
         val resP = WS.url(url).get()
@@ -107,7 +101,7 @@ object Spider {
             }
             catch {
               // TODO use logger
-              case x: Exception => println("Exception: " + x)
+              case x: Exception => log.error(x, s"Exception thrown processing letter page $url")
               throw x
             }
             cs ! Success
@@ -117,7 +111,7 @@ object Spider {
     }
   }
 
-  class MineralVisitor extends Actor
+  class MineralVisitor extends Actor with ActorLogging
 
   with RealMineralBuilderComponent
   with BasicFormulaParserComponent
@@ -133,10 +127,10 @@ object Spider {
     }
 
 
-    protected def receive = {
+    def receive = {
       case VisitMineral(url) => {
         val cs = sender
-        val resP = WS.url(url).get()
+        val resP = WS.url(url).get
         resP map {
           res => {
             val body = res.body
@@ -153,7 +147,7 @@ object Spider {
 
             catch {
               // TODO use logger
-              case x: Exception => println("Exception: " + x)
+              case x: Exception => log.error(x, s"Exception thrown processing mineral page $url")
               throw x
             }
             cs ! Success

@@ -1,10 +1,9 @@
 package controllers
 
-import play.api._
-import libs.concurrent._
 import play.api.mvc._
-import spider.Spider
-import akka.util.Duration
+import scala.concurrent.duration._
+import spider._
+import spider.implicits._
 
 object Application extends Controller {
 
@@ -12,7 +11,7 @@ object Application extends Controller {
     Async {
       val start = System.currentTimeMillis
 
-      (Spider.run().asPromise) map { _ =>
+      (Spider.run) map { _ =>
         Ok("That took " + Duration(System.currentTimeMillis - start, java.util.concurrent.TimeUnit.MILLISECONDS).toMillis )
       }
     }

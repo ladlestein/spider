@@ -1,6 +1,6 @@
 import sbt._
 import Keys._
-import PlayProject._
+import play.Project._
 
 object  ApplicationBuild extends Build {
 
@@ -9,21 +9,19 @@ object  ApplicationBuild extends Build {
 
     val appDependencies = Seq(
       "com.nowanswers" %% "chemistry" % "0.3.6",
-      "com.typesafe.akka" % "akka-actor" % "2.0.2",
+      "com.typesafe.akka" %% "akka-actor" % "2.1.2",
       "org.ccil.cowan.tagsoup" % "tagsoup" % "1.2.1" withSources(),
-      "org.scalesxml" %% "scales-xml" % "0.4.3",
-      "com.mongodb.casbah" %% "casbah" % "2.1.5-1",
-      "com.novus" %% "salat-core" % "0.0.8",
+      "org.scalesxml" %% "scales-xml" % "0.4.5",
+      "org.mongodb" %% "casbah" % "2.5.0",
+      "com.novus" %% "salat" % "1.9.2-SNAPSHOT",
       "org.mockito" % "mockito-all" % "1.9.0" % "test"
     )
 
-    val main = PlayProject(appName, appVersion, appDependencies, mainLang = SCALA).settings(
+    val main = play.Project(appName, appVersion, appDependencies).settings(
 
       autoCompilerPlugins := true,
 
-      libraryDependencies <+= scalaVersion { v =>
-        compilerPlugin("org.scala-lang.plugins" % "continuations" % "2.9.2")
-      },
+      scalaVersion := "2.10.1",
 
       resolvers ++= Seq(
         Resolver.file("Local ivy Repository", file("/Users/ladlestein/.ivy2/local/"))(Resolver.ivyStylePatterns),
